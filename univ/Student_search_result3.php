@@ -1,0 +1,273 @@
+﻿<?php
+include_once "header.php";
+?>
+
+<?php
+
+if (isset($_POST['btnsearch'])) {
+
+    if (!isset($_POST['csrf_token']) || $_SESSION['csrf_token'] != $_POST['csrf_token']) {
+        http_response_code(403);
+        die('');
+        exit;
+    }
+
+    $txtarname = $_POST['txtarname'];
+    $txtarname = stripslashes($txtarname);
+
+    $request = $_POST['txtrequest'];
+    $request = stripslashes($request);
+
+    $user_role = $_SESSION['roleid'];
+
+    $univ_id = $_SESSION['univ_id'];
+
+    $Serial = "";
+    $STATUS_ID = "";
+    $STATUS_VALUE = "";
+    $FULLNAME = "";
+    $NATIONAL_ID = "";
+    $REQUEST_ID = "";
+
+/////////////////////////////////////////////////
+    if (strlen($request) == 0) // بحث بالجامعه بس
+    {
+
+        if ($user_role == 10) {
+            $selectt = ",universty_lookup.name as namee ,universty_lookup.id as idd";
+            $fromm = ",universty_lookup";
+            $wheree = "and universty_lookup.id = `applicant`.`univ_id` and  `universty_lookup`.`id` =$univ_id and `applicant`.`user_role`=$user_role";
+
+        } else if ($user_role == 20) {
+            $selectt = ",academy_lookup.name as namee ,academy_lookup.id as idd";
+            $fromm = ",academy_lookup";
+            $wheree = "and academy_lookup.id = `applicant`.`univ_id` and  `academy_lookup`.`id` =$univ_id and `applicant`.`user_role`=$user_role";
+
+        } else {
+            $selectt = ",institute_lookup.name as namee ,institute_lookup.id as idd";
+            $fromm = ",institute_lookup";
+            $wheree = "and institute_lookup.id = `applicant`.`univ_id` and  `institute_lookup`.`id` =$univ_id and `applicant`.`user_role`=$user_role ";
+
+        }
+    }
+    ///////////////////////////////////////////////////////////////
+    else // بحث بالجامعة و الطلب
+    {
+
+        if ($user_role == 10) {
+            $selectt = ",universty_lookup.name as namee ,universty_lookup.id as idd";
+            $fromm = ",universty_lookup";
+            $wheree = "and universty_lookup.id = `applicant`.`univ_id` and  `universty_lookup`.`id` =$univ_id  and `request`.`REQUEST_ID` = $request and `applicant`.`user_role`=$user_role";
+
+        } else if ($user_role == 20) {
+            $selectt = ",academy_lookup.name as namee ,academy_lookup.id as idd";
+            $fromm = ",academy_lookup";
+            $wheree = " and academy_lookup.id = `applicant`.`univ_id` and  `academy_lookup`.`id` =$univ_id  and `request`.`REQUEST_ID` = $request and `applicant`.`user_role`=$user_role";
+
+        } else {
+            $selectt = ",institute_lookup.name as namee ,institute_lookup.id as idd";
+            $fromm = ",institute_lookup";
+            $wheree = " and institute_lookup.id = `applicant`.`univ_id` and  `institute_lookup`.`id` =$univ_id  and `request`.`REQUEST_ID` = $request and `applicant`.`user_role`=$user_role";
+
+        }
+
+    }
+/////////////////////////////////////////////////
+
+/*
+echo     $selectt;
+echo"<br>";
+
+echo     $fromm;
+echo"<br>";
+echo     $wheree;
+echo"<br>";
+ */
+    $sql = "SELECT applicant.`Serial` as app_serial $selectt ,`degree`,`fk_degree`,`FK_matlob`,matlob.matlob_NAME,StatusID,request.REQUEST_ID
+FROM applicant , request $fromm ,matlob
+where
+ applicant.FK_matlob=matlob.matlob_ID
+and request.FK_Applicant_serial = `applicant`.`Serial`
+ $wheree
+ order by REQUEST_ID
+ ";
+//echo $sql;
+    //
+
+    $stmt = $con->prepare($sql);
+    /* Execute statement */
+
+    $x = '1';
+    // echo " q ". $q . $x.$ssn.$request.$mail;
+    // $stmt->bind_param($fff,$tt);
+    //$bindddddd;
+    $stmt->execute();
+    $res = $stmt->get_result();
+    //echo $stmt->num_rows ;
+
+    $n = $stmt->affected_rows;
+
+    if ($n > 0) {
+
+        /*
+        echo $Serial;
+        echo "<br>";
+        echo $STATUS_ID;
+        echo "<br>";
+        echo $degree;
+        echo "<br>";
+        echo $matlob_NAME;
+        echo "<br>";
+        echo $REQUEST_ID;
+        echo "<br>";
+        echo $namee;
+        echo "<br>";
+
+         */
+        //echo $Serial.$STATUS_ID.$STATUS_VALUE.$NATIONAL_ID;
+        /* 1= طلب مقدم
+        5=مرفوض (خطأ بشهادة التخرج داخل الملف )
+        6=مرفوض ( خطأ بالرقم القمومى داخل الملف )
+        7=مرفوض ( خطأ بإيصال الدفع داخل الملف)
+        8=مرفوض ( الملف لا يفتح)
+         */
+        echo '
+  <table class="table table-striped table-hover text-center table-bordered stylee"
+            style="margin-bottom: 15px;">
+
+    <thead class="thead-dark" style="background-color:#333; color:#fff;"><tr>
+
+<th>تعديل</th>
+<th> المطلوب عمله</th>
+<th> التخصص</th>
+<th> الدرجه </th>
+<th> رقم الطلب</th>
+<th> المنشأه</th>
+       </tr>
+    </thead>
+    <tbody>';
+        while ($row = $res->fetch_array(MYSQLI_ASSOC)) {
+
+            $Serial = $row['app_serial'];
+
+            //echo $Serial;
+            $_SESSION['Serial'] = $Serial;
+            $STATUS_ID = $row['StatusID'];
+            $degree = $row['degree'];
+            $matlob_NAME = $row['matlob_NAME'];
+            $FK_matlob = $row['FK_matlob'];
+            $REQUEST_ID = $row['REQUEST_ID'];
+            $_SESSION['REQUEST_ID'] = $REQUEST_ID;
+            $namee = $row['namee'];
+            $idd = $row['idd'];
+            $fk_degree = $row['fk_degree'];
+
+            if ($STATUS_ID == '1' || $STATUS_ID == '3' || $STATUS_ID == '8' || $STATUS_ID == '13') {
+
+                echo '<tr>
+		   <td class="text-center"><a  href="edituniv.php?id=' . $row['app_serial'] . '">تعديل</a> </td>
+
+
+        	<td class="text-center">' . $row['matlob_NAME'] . ' </td>
+<td class="text-center">' . $row['degree'] . ' </td>';
+
+                $qdegree = "SELECT `name` FROM `degree` WHERE `id`=$fk_degree";
+                $stmtqdegree = $con->prepare($qdegree);
+
+                $stmtqdegree->execute();
+                $resstmtqdegree = $stmtqdegree->get_result();
+                while ($rowresstmtqdegree = $resstmtqdegree->fetch_array(MYSQLI_ASSOC)) {
+                    $degree_NAME = $rowresstmtqdegree['name'];
+                    echo '
+		  <td class="text-center">' . $rowresstmtqdegree['name'] . ' </td>
+
+	 ';
+                }
+
+                echo '
+<td class="text-center">' . $row['REQUEST_ID'] . ' </td>
+			  <td class="text-center">' . $row['namee'] . ' </td>
+
+
+
+			';
+
+                echo '</tr>';
+
+                ?>
+
+
+
+
+
+<?php
+}
+
+        }
+        echo '</tbody></table>';
+    } else {
+        echo '<br/>
+<center>
+ <div  align="center" class="lggraytitle style1" style="margin-bottom:200px ">
+<h3 style="color:red;">
+
+لا توجد نتائج للبحث
+
+
+</h3>
+</div>
+</center>
+';
+        echo ' <td align="center" ><div align="center" class="style1" style="color:#FF0000"> <a href="Student_search3.php"> للرجوع للصفحة السابقة اضغط هنا </a> </div> </td>';
+    }
+
+} else {
+
+    echo '
+    <div align="center" class="style1" style="color:#FF0000">
+        <h2>لا يمكن الرجوع لهذه الصفحة</h2>
+		 </div>
+         ';
+
+}
+
+?>
+
+<script>
+function validatenameff() {
+    var txtarname = document.getElementById("txtarname").value;
+    if (txtarname.length == 0) {
+        var str = "يرجى ادخال اسم المنشأه";
+        alert(str);
+        //return false;
+    } else if (txtarname.length != 0) {
+
+
+        //validatedate();
+        var txtorg = document.getElementById("txtorg").value;
+        if (txtorg.length == 0) {
+            var str = "يرجى ادخال اسم الدرجة";
+            alert(str);
+            //return false;
+        } else {
+            var pattern = /^[\u0621-\u064A ]+$/;
+            result2 = pattern.test(txtorg);
+            if (result2) {
+                form.submit();
+            } else {
+                var strr = "اسم الدرجة يجب ان يكون باللغة العربية"
+                alert(strr);
+            }
+
+        }
+
+
+    } else {
+        //validatedate();
+        form.submit();
+    }
+}
+</script>
+<?php
+include_once "footer.php";
+?>
